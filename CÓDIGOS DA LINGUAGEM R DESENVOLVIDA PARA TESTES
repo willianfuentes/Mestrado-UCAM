@@ -1,0 +1,484 @@
+# Script Willian - 28/05/2024
+
+# 1. Mudando o diretorio
+setwd("C:/")
+
+# 2. Instalando e carregando bibliotecas externas
+library(car) # testes estatisticos diversos
+library(gmodels) # construcao de tabelas
+library(aod) # medida de AIC
+library(ggplot2) # graficos
+library(FSA) # testes post-hoc
+library(readxl) # leitura de dados em Excel
+library(openxlsx) # carregamento de dados em Excel
+library(psych) # estatisticas descritivas no geral
+library(stats) # para testes estatisticos do modelo
+library(mfx) # para o efeito marginal das variaveis
+library(MASS) # para avaliacao da matriz de confusao do modelo
+library(openxlsx) # para exportacao de dados em Excel
+library(dplyr) # para organizacao dos dados
+library(tidyr) # para organizacao dos dados
+library(broom) # melhor exposição dos resultados
+library(tidyverse) # para organização dos dados
+library(ResourceSelection) # selecao dos criterios de informacao
+library(DHARMa) # diagnostico dos residuos do modelo
+library(psych) # para estatisticas descritivas
+library(ggplot2) # para construcao de graficos
+library(car) # para analise de regressao
+library(pROC) # para a construcao da Curva ROC
+
+# 3. Carregando os dados
+dados <- read_excel("base_tratada.xlsx")
+
+# 4. Testes de hipoteses
+
+## 4.1. A idade dos respondentes influencia na modalidade de ensino escolhido?
+dados$modalidade2 <- ifelse(dados$modalidade == "100% EAD", 1, 0)
+
+dados$idade2 <- ifelse(dados$idade == "Menos de 18 anos", "18 - 24 anos", 
+                       dados$idade)
+
+dados$idade2 <- ifelse(dados$idade == "45 - 54 anos" | dados$idade =="55 anos ou mais", 
+                       "35 - 44 anos", 
+                       dados$idade2)
+
+tabela_etaria <- table(dados$idade2, dados$modalidade)
+tabela_etaria
+
+CrossTable(tabela_etaria, digits = 2, expected = T, fisher = T, format = "SPSS",
+           prop.chisq = F)
+
+
+## 4.2. A idade dos respondentes influencia sua opinião sobre a qualidade do 
+## ensino??
+
+dados2 <- dados[dados$presencial_melhor_ead != "Nem concordo nem discordo",]
+  
+tabela_qualidade <- table(dados2$idade2, dados2$presencial_melhor_ead)
+tabela_qualidade
+
+CrossTable(tabela_qualidade, digits = 2, expected = T, fisher = T, format = "SPSS",
+           prop.chisq = F)
+
+## 4.3. O fato do aluno estar trabalhando e estudando influencia na modalidade 
+## de ensino escolhido??
+
+tabela_trabalho <- table(dados$ocupacao, dados$modalidade)
+tabela_trabalho
+
+CrossTable(tabela_trabalho, digits = 2, expected = T, fisher = T, format = "SPSS",
+           prop.chisq = F)
+
+## 4.4. O fato do aluno estar trabalhando e estudando influencia sua percepção 
+## sobre tempo e flexibilidade?
+
+dados2$presencial_melhor_ead2 <- ifelse(dados2$presencial_melhor_ead == "Discordo totalmente" |
+                                          dados2$presencial_melhor_ead == "Discordo parcialmente",
+                                        "Discordo", dados2$presencial_melhor_ead)
+
+tabela_work_qualidade <- table(dados2$presencial_melhor_ead2, dados2$ocupacao)
+tabela_work_qualidade
+
+CrossTable(tabela_work_qualidade, digits = 2, expected = T, fisher = T, 
+           format = "SPSS",
+           prop.chisq = F)
+
+## 4.5. A localidade onde o respondente reside influencia na modalidade 
+## de ensino escolhida?
+
+dados$localidade2 <- ifelse(dados$localidade != "Niteroi",
+                            "Outras", dados$localidade)
+
+tabela_localidade <- table(dados$localidade2, dados$modalidade)
+tabela_localidade
+
+CrossTable(tabela_localidade, digits = 2, expected = T, fisher = T, format = "SPSS",
+           prop.chisq = F)
+
+## 4.6. H0: não há diferença nas proporções na localidade do aluno em relação a
+## modalidade.
+
+dados$renda_familiar2 <- ifelse(dados$renda_familiar == "Acima de 11 salarios-minimos",
+                                "De 7 a 11 salarios-minimos", dados$renda_familiar)
+
+tabela_renda <- table(dados$renda_familiar2, dados$modalidade)
+tabela_renda
+
+CrossTable(tabela_renda, digits = 2, expected = T, fisher = T, format = "SPSS",
+           prop.chisq = F)
+
+## 4.7. A faixa de renda dos respondentes influencia sua opinião sobre a 
+## qualidade do ensino?
+
+dados2$renda_familiar2 <- ifelse(dados2$renda_familiar == "Acima de 11 salarios-minimos",
+                                "De 7 a 11 salarios-minimos", dados2$renda_familiar)
+
+tabela_renda2 <- table(dados2$renda_familiar2, dados2$presencial_melhor_ead2)
+tabela_renda2
+
+CrossTable(tabela_renda2, digits = 2, expected = T, fisher = T, format = "SPSS",
+           prop.chisq = F)
+
+## 4.8. A faixa de renda dos respondentes influencia sua motivação para a 
+## modalidade de ensino escolhida?
+
+dados$mot_mod_presencial2 <- ifelse(dados$mot_mod_presencial == "E a modalidade que estou mais acostumado" |
+                                      dados$mot_mod_presencial == "Facilidade no aprendizado" |
+                                      dados$mot_mod_presencial == "Falta de infraestrutura em casa" |
+                                      dados$mot_mod_presencial == "Interacao com professor e colegas de turma",
+                                    "Outras", dados$mot_mod_presencial)
+
+tabela_renda3 <- table(dados$mot_mod_presencial2, dados$renda_familiar2)
+tabela_renda3
+
+CrossTable(tabela_renda3, digits = 2, expected = T, fisher = T, format = "SPSS",
+           prop.chisq = F)
+
+## 4.9. A responsabilidade pelo pagamento da mensalidade influencia na 
+## modalidade de ensino escolhida?
+
+dados$mensalidade_fac2 <- ifelse(dados$mensalidade_fac == "Nao, possuo gratuidade.",
+                                 "Sim, pago mas tenho algum beneficio (bolsa, FIES, ajuda de conhecidos).",
+                                 dados$mensalidade_fac)
+
+tabela_resp <- table(dados$mensalidade_fac2, dados$modalidade)
+tabela_resp
+
+CrossTable(tabela_resp, digits = 2, expected = T, fisher = T, format = "SPSS",
+           prop.chisq = F)
+
+## 4.10. A faixa de renda dos respondentes influencia no seu acesso à internet 
+## e infraestrutura digital?
+
+tabela_internet <- table(dados$renda_familiar2, dados$acesso_internet)
+tabela_internet
+
+CrossTable(tabela_internet, digits = 2, expected = T, fisher = T, format = "SPSS",
+           prop.chisq = F)
+
+## 4.11. O acesso à internet e infraestrutura digital dos respondentes
+## influencia na modalidade de ensino escolhida?
+
+tabela_internet2 <- table(dados$acesso_internet, dados$modalidade)
+tabela_internet2
+
+CrossTable(tabela_internet2, digits = 2, expected = T, fisher = T, format = "SPSS",
+           prop.chisq = F)
+
+## 4.12. A localidade onde o respondente reside influencia na 
+## modalidade de ensino escolhida?
+
+tabela_localidade2 <- table(dados$localidade2, dados$modalidade)
+tabela_localidade2
+
+CrossTable(tabela_localidade2, digits = 2, expected = T, fisher = T, format = "SPSS",
+           prop.chisq = F)
+
+## 4.13. A percepção de qualidade sobre o ensino presencial e à 
+## distância influencia na modalidade de ensino escolhida?
+
+tabela_qualidade2 <- table(dados$mot_mod_presencial, dados$modalidade)
+tabela_qualidade2
+
+CrossTable(tabela_qualidade2, digits = 2, expected = T, fisher = T, format = "SPSS",
+           prop.chisq = F)
+
+## 4.14. A percepção de pertencimento digital influencia na modalidade de 
+## ensino escolhida?
+
+tabela_digitalizado <- table(dados$consid_digitalizado, dados$modalidade)
+tabela_digitalizado
+
+CrossTable(tabela_digitalizado, digits = 2, expected = T, fisher = T, 
+           format = "SPSS",
+           prop.chisq = F)
+#################################################################################
+
+# 5. Regressao Logistica
+# 5. - Modelo LOGIT
+
+dados$ead <- ifelse(dados$modalidade == "100% EAD", 1, 0)
+dados$atividade_prof <- ifelse(dados$ocupacao == "Sim, eu trabalho e estudo.", 1,
+                               0)
+dados$niteroi <- ifelse(dados$localidade2 == "Niteroi", 1, 0)
+dados$faixa_etaria <- ifelse(dados$idade == "25 - 34 anos", 1, 0)
+dados$faixa_renda <- ifelse(dados$renda_familiar == "Ate 3 salarios-minimos", 1, 0)
+dados$resp_mensalidade <- ifelse(dados$mensalidade_fac == "Sim, pago as mensalidades integralmente.",
+                                 1, 0)
+dados$internet_inf_digital <- ifelse(dados$consid_digitalizado == "Concordo totalmente",
+                                     1, 0)
+dados$qualidade_ensino <- ifelse(dados$presencial_melhor_ead == "Concordo totalmente",
+                                 1, 0)
+  
+names(dados)
+
+modelo <- glm(ead ~ faixa_etaria + atividade_prof + niteroi + faixa_etaria +
+                faixa_renda + resp_mensalidade + internet_inf_digital + 
+                qualidade_ensino,
+                data = dados, family = binomial(link = "logit"))
+
+summary(modelo)
+
+# 5.1 - Visualizacao dos Resultados
+
+sum1 <- summary(modelo)
+
+sum1
+
+
+# 5.2 - Visualizacao das razoes de chance
+
+odds_logit <- logitor(ead ~ faixa_etaria + atividade_prof + niteroi + faixa_etaria +
+                        faixa_renda + resp_mensalidade + internet_inf_digital + 
+                        qualidade_ensino,
+                      data = dados)
+
+odds_logit
+
+
+# As razoes de chance mostradas pela funcao logitor correspondem ao numero de 
+# euler elevado ao coeficiente da variavel em questao:
+
+#==============================================================================#
+
+# 6 - Teste dos Pressupostos
+
+
+# Para fazer a analise da relacao entre as variaveis independentes (preditoras) e o termo logit
+# (probabilidades/1 - probabilidade), e necessario rodar as predicoes das probabilidades primeiro.
+
+probab <- predict(modelo, type = "response") # probabilidades do modelo
+classes.preditas <- ifelse(probab > .5, 1, 0) # ponto de corte
+
+
+## 6.1. - Visualizacao dos Residuos
+par(family="serif") # coloca a fonte Times New Roman
+plot(modelo$residuals, ylab = "Resíduos") # Plota os pontos dos residuos
+
+# Coloca os residuos em ordem crescente e decrescente
+ggplot(modelo) +
+  geom_point(mapping = aes(x = modelo$fitted.values, y = modelo$residuals)) +
+  xlab("Probabilidades Preditas") + ylab("Residuos") +
+  geom_abline(intercept = 0, slope = 1, color = "red") + 
+  theme(
+    axis.text = element_text(family = "serif"),
+    axis.title = element_text(family = "serif"),
+    legend.title = element_text(family = "serif"),
+    plot.title = element_text(family = "serif", size = 12)
+  )
+
+
+# 6.2. - Analise de Outliers segundo Kassambara, 2015
+par(family="serif")
+plot(modelo, which = 4, id.n = 3)
+
+# Foram apontados os outliers da linha 674, 816 e 1732
+
+model.data <- augment(modelo) %>%
+  mutate(index = 1:n())
+
+model.data %>% top_n(3, .cooksd)
+
+View (model.data %>%
+        filter(abs(.std.resid) > 3))
+
+# Grafico Distancia de Cooks
+EAD <- data.frame(ifelse(model.data$ead == 1,"EAD","Presencial"))
+model.data["EAD"] <- EAD
+
+res_graph <- ggplot(model.data, aes(index, .std.resid)) +
+  geom_point(aes(color = EAD, alpha = .5)) +
+  theme_bw() +
+  scale_fill_discrete(name = "EAD", labels = c("EAD", "Presencial")) +
+  theme(
+    axis.text = element_text(family = "serif"),
+    axis.title = element_text(family = "serif"),
+    legend.title = element_text(family = "serif"),
+    plot.title = element_text(family = "serif", size = 12)
+  ) + scale_y_continuous(breaks = c(0,1))
+
+res_graph
+
+# 6.3 Premissa de Ausencia de Multicolinearidade
+
+# VIF - Variance Inflation Factor - Deve ser menor que 10.
+
+vif <- vif(modelo)
+
+vif
+
+mean(vif)
+
+## 6.4 - Teste de Heterocedasticidade (Vignette - Dharma)
+
+sim_rest <- simulateResiduals(fittedModel = modelo)
+par(family="serif")
+plot(sim_rest)
+
+testQuantiles(sim_rest)
+
+sim_rest$scaledResiduals
+
+
+# 6.4 - teste Hosmer e Lemeshow:
+# O teste de Hosmer e Lemeshow e utilizado para demonstrar a qualidade do ajuste do 
+# modelo, ou seja, se o modelo pode explicar os dados observados. Para este teste, 
+# os dados sao divididos de acordo com as probabilidades previstas em 10 grupos iguais, 
+# sendo que os numeros previstos e os reais sao comparados com a estatistica do 
+# qui-quadrado. Hair et al. (2009) sugerem um tamanho de amostra de pelo menos 50 
+# casos para a realizacao deste teste. A hipotese nula H0 do qui-quadrado (p=0,05)
+# deste teste e a de que as proporcoes observadas e esperadas sao as mesmas 
+# ao longo da amostra. 
+
+
+teste_hl <- hoslem.test(dados$ead, modelo$fitted.values, g = 5)
+
+teste_hl
+
+# No teste se rejeitou H0, portanto, as proporcoes observadas e esperadas nao sao 
+# as mesmas ao longo da amostra. p-value = 0.00.
+
+
+# 6.5 - Wald teste e Pearson Chi2 Goodness-of-Fit Test
+
+# Pearson
+pr <- sum(residuals(modelo, type= "pearson")^2)
+pr
+
+df <- modelo$df.residual
+df
+
+p_value <- pchisq(pr, df, lower=F)
+p_value
+
+print(matrix(c("Pearson Chi GOF","Chi2","df","p-value", " ",
+               + round(pr,4), df, round(p_value,4)), ncol=2))
+
+# p_value > 0.05 significa que rejeitamos a hipotese 
+# nula de que o modelo nao esta bm ajustado.
+
+# Wald:
+
+waldtest(modelo) # estatistica F
+waldtest.default(modelo) # estatistica chi^2
+
+# o valor-p de ambos os testes foram baixos, indicando bom ajuste do modelo.
+#==============================================================================#
+
+
+# 7. Resultados Predicoes do modelo:
+
+# 7.1 - Probabilidades 
+prob2 <- predict(object = modelo, newdata = dados, type = "response")
+classes.pred <- ifelse(prob2 > 0.5, 1, 0)
+
+tab_logit <- table(classes.pred)
+
+View(tab_logit)
+
+# 7.2 - Montando os vetores de limiares:
+limiares <- sort(prob2)
+
+# 7.3 - Colocando o vetor de probabilidades na base original:
+dados2 <- data.frame(dados, Probabilidades = prob2, 
+                     funp_prevista = classes.pred)
+
+
+# 7.4 - Montando a matriz de Confusao
+
+# 7.4.1 - Primeiro montando os objetos para medir a qualidade do modelo:
+acuracia <- c()
+sensitividade <- c()
+especificidade <- c()
+
+# 7.4.1 - Gerando a matriz de confusao:
+confusao <- table(Predito = classes.pred, 
+                  Original = dados$ead)
+
+confusao
+
+# 7.4.2 - Verificando valores previstos na matriz de confusao:
+vp <- confusao[2,2] # verdadeiros positivos
+fn <- confusao[1,2] # falsos negativos
+
+vn <- confusao[1,1] # verdadeiros negativos
+fp <- confusao[2,1] # falsos positivos
+
+
+# 7.4.2 - Calculando a sensitividade do modelo:
+sensitividade <- vp/(vp +fn)
+
+sensitividade # decimais
+
+sensitividade * 100 # percentual
+
+# 7.4.3 - Calculando a espeficidade:
+especificidade <- vn/(vn+fp)
+
+especificidade # decimais
+
+especificidade * 100 # percentual
+
+
+# 7.4.4 - Calculando a acuracia do modelo:
+acuracia <- sum(diag(confusao))/sum(confusao)
+
+acuracia # decimais
+acuracia * 100 # percentual
+
+# 7.5 - Curva ROC:
+
+# A Curva ROC (Receiver Operating Characteristic Curve) associada ao modelo logistico 
+# mensura a capacidade de predicao do modelo proposto, atraves das predicoes da 
+# sensibilidade e da especificidade. Segundo Fawcett (2006) esta tecnica serve para 
+# visualizar, organizar e classificar o modelo com base na performance preditiva.
+# A curva ROC e produzida bi-dimensionalmente, pela obtencaoo da relacaoo entre a taxa 
+# dos verdadeiros positivos do modelo e da taxa dos falsos positivos preditos. 
+# Desta forma, o ponto inferior esquerdo (0,0) significa que nao e predita uma 
+# classificacao positiva; no canto oposto do grafico (1,1) classifica os resultados 
+# incondicionalmente positivos e; o ponto (0,1) representa uma excelente classificacao. 
+# Quanto mais ao noroeste do grafico o ponto estiver melhor.
+
+
+auc(as.numeric(modelo$model[1]==1),as.vector(fitted(modelo)))
+
+plot(roc(as.numeric(modelo$model[1]==1),as.vector(fitted(modelo))))
+
+mean(dados$funpresp)
+
+myroc <- roc(as.numeric(modelo$model[1]==1),as.vector(fitted(modelo)))
+mycoords <- coords(myroc, "all", transpose = TRUE)
+
+# Grafico Lsens
+par(family="serif")
+plot(mycoords["threshold",], mycoords["specificity",], type="l", col="red", xlab="Cutoff",
+     ylab="Performance")
+lines(mycoords["threshold",], mycoords["sensitivity",], type="l", col="blue")
+legend(100, 0.4, c("Specificity", "Sensitivity"), col=c("red", "blue"), lty=1)
+
+par(family="serif")
+best.coords <- coords(myroc, "best", best.method = "youden", 
+                      best.weights = c(1, 0.5), transpose = TRUE)
+abline(v=best.coords["threshold"], lty=2, col="grey")
+abline(h=best.coords["specificity"], lty=2, col="red")
+abline(h=best.coords["sensitivity"], lty=2, col="blue")
+
+best.coords
+
+# Grafico da Curva ROC
+
+par(family="serif")
+plot(myroc,
+     xlab = "EAD",
+     ylab = "Presencial",
+     auc.polygon= T,
+     auc.polygon.col = "white",
+     max.auc.polygon.col = "white",
+     auc.polygon.border = "white",
+     max.auc.polygon.border = "white",
+     print.auc=TRUE, 
+     grud=c(0.1,0.2),
+     grid.col=c("white","red"), 
+     identity.col = "white",
+     max.auc.polygon = TRUE,
+     print.thres=TRUE)
